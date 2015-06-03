@@ -19,26 +19,23 @@
 ENetPacket *
 enet_packet_create (const void * data, size_t dataLength, enet_uint32 flags)
 {
-    ENetPacket * packet = (ENetPacket *) enet_malloc (sizeof (ENetPacket));
-    if (packet == NULL)
-      return NULL;
-
+    ENetPacket * packet;
     if (flags & ENET_PACKET_FLAG_NO_ALLOCATE)
-      packet -> data = (enet_uint8 *) data;
-    else
-    if (dataLength <= 0)
-      packet -> data = NULL;
+    {
+        packet = (ENetPacket *) enet_malloc (sizeof (ENetPacket));
+        if (packet == NULL)
+            return NULL;
+
+        packet -> data = (enet_uint8 *) data;
+    }
     else
     {
-       packet -> data = (enet_uint8 *) enet_malloc (dataLength);
-       if (packet -> data == NULL)
-       {
-          enet_free (packet);
-          return NULL;
-       }
+        packet = (ENetPacket *) enet_malloc (sizeof (ENetPacket) + dataLength);
+        if (packet == NULL)
+            return NULL;
 
-       if (data != NULL)
-         memcpy (packet -> data, data, dataLength);
+        packet -> data = (enet_uint8 *) packet + sizeof (ENetPacket);
+        memcpy (packet -> data, data, dataLength);
     }
 
     packet -> referenceCount = 0;
@@ -61,41 +58,7 @@ enet_packet_destroy (ENetPacket * packet)
 
     if (packet -> freeCallback != NULL)
       (* packet -> freeCallback) (packet);
-    if (! (packet -> flags & ENET_PACKET_FLAG_NO_ALLOCATE) &&
-        packet -> data != NULL)
-      enet_free (packet -> data);
     enet_free (packet);
-}
-
-/** Attempts to resize the data in the packet to length specified in the 
-    dataLength parameter 
-    @param packet packet to resize
-    @param dataLength new size for the packet data
-    @returns 0 on success, < 0 on failure
-*/
-int
-enet_packet_resize (ENetPacket * packet, size_t dataLength)
-{
-    enet_uint8 * newData;
-   
-    if (dataLength <= packet -> dataLength || (packet -> flags & ENET_PACKET_FLAG_NO_ALLOCATE))
-    {
-       packet -> dataLength = dataLength;
-
-       return 0;
-    }
-
-    newData = (enet_uint8 *) enet_malloc (dataLength);
-    if (newData == NULL)
-      return -1;
-
-    memcpy (newData, packet -> data, packet -> dataLength);
-    enet_free (packet -> data);
-    
-    packet -> data = newData;
-    packet -> dataLength = dataLength;
-
-    return 0;
 }
 
 static int initializedCRC32 = 0;
